@@ -87,7 +87,7 @@ async def process_bin_count(
         }
     )
 
-@router.get("/get_bin_count_data", response_model=DataResponse)
+@router.get("/bin-count-records", response_model=DataResponse)
 async def get_bin_count_data(current_user: tuple = Depends(get_current_user)):
     """
     Fetch all bin count records from the bin_count_records table.
