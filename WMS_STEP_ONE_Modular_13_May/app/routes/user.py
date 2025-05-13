@@ -6,6 +6,8 @@ from app.models.response import DataResponse
 from fastapi import HTTPException
 from passlib.context import CryptContext
 from pydantic import BaseModel
+from jose import jwt
+from app.config.settings import SECRET_KEY, ALGORITHM
 
 router = APIRouter()
 
@@ -173,7 +175,7 @@ async def get_all_wms_ai_users(current_user: tuple = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=f"Error fetching users: {str(e)}")
 
 @router.get("/master-admin-details", response_model=DataResponse)
-async def get_master_admin_details(current_user: tuple = Depends(get_current_user)):
+async def get_master_admin_details():
     """
     Fetch all records from the master_admin_details table.
     """
@@ -195,3 +197,17 @@ async def get_master_admin_details(current_user: tuple = Depends(get_current_use
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching master admin details: {str(e)}")
+
+@router.get("/user/authorized")
+async def whoami(current_user: tuple = Depends(get_current_user)):
+    """
+    Return the username if logged in as admin, or userid if logged in as user, based on the token.
+    """
+    userid_or_username, token = current_user
+    # Decode the token to get the type
+    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    token_type = payload.get("type")
+    if token_type == "admin":
+        return {"username": userid_or_username}
+    else:
+        return {"userid": userid_or_username}
