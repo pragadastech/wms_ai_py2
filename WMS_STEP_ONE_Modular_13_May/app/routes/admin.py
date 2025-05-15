@@ -33,7 +33,6 @@ async def get_admin_dashboard(current_admin: tuple = Depends(get_current_admin))
         user_details = [
             {
                 "userid": user["userid"],
-                "email": user["email"],
                 "created_at": user["created_at"]
             }
             for user in response.data

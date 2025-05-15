@@ -166,7 +166,6 @@ async def get_all_wms_ai_users(current_user: tuple = Depends(get_current_user)):
             total_records=len(users),
             data=[{
                 "userid": user["userid"],
-                "email": user["email"],
                 "created_at": user["created_at"]
             } for user in users],
             progress=None
