@@ -57,7 +57,6 @@ def create_user(user: UserCreate) -> UserResponse:
         hashed_password = pwd_ctx.hash(user.password)
         user_data = {
             "userid": user.userid,
-            "email": user.email,
             "password_hash": hashed_password,
             "created_at": datetime.utcnow().isoformat()
         }
@@ -66,7 +65,7 @@ def create_user(user: UserCreate) -> UserResponse:
         if not response.data:
             raise HTTPException(status_code=500, detail="Failed to create user")
             
-        return UserResponse(userid=user.userid, email=user.email)
+        return UserResponse(userid=user.userid)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating user: {str(e)}")
 
