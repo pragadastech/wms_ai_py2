@@ -1,0 +1,5 @@
+supabase
+python-dotenv
+python-multipart
+requests
+playwright
