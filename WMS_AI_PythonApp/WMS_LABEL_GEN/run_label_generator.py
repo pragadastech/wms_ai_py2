@@ -141,8 +141,18 @@ async def generate_all_labels(input_data):
         # Process all orders in the input data
         for order_id, order_data in input_data.items():
             print(f"\nProcessing order: {order_id}")
+            print(f"Order data structure: {json.dumps(order_data, indent=2)}")
             
+            # Check if itemDetails exists
+            if "itemDetails" not in order_data:
+                print(f"Warning: No itemDetails found for order {order_id}. Skipping this order.")
+                continue
+                
             # Parse addresses
+            if "shipping_address" not in order_data or "ship_from" not in order_data:
+                print(f"Warning: Missing shipping address or ship from address for order {order_id}. Skipping this order.")
+                continue
+                
             shipping_address = parse_shipping_address(order_data["shipping_address"])
             ship_from = parse_ship_from(order_data["ship_from"])
             
@@ -166,6 +176,9 @@ async def generate_all_labels(input_data):
                         item_index + 1,
                         label_count + 1
                     )
+                    
+                    if "L60" in ship_from["name"]:
+                        order_data["ponumber"] = order_data["ponumber"] + "-SC"
                     
                     # Create label HTML
                     label_html = f"""
@@ -192,7 +205,7 @@ async def generate_all_labels(input_data):
             <td class="pleft" style="text-align:left;">
                 <div class="laddress">
                     <b>SHIP FROM:</b><br><br>
-                    {ship_from["name"]} L60<br>
+                    {ship_from["name"]}<br>
                     {ship_from["address1"]},<br>
                     {ship_from["city"]},   {ship_from["state"]} {ship_from["zip"]}<br><br><br>
                 </div>
@@ -273,6 +286,64 @@ async def generate_all_labels(input_data):
 </html>
 """
                     
+                    # Create label HTML
+                    packingslip_html = f"""
+                    <html>
+    <head>
+        <style>
+            @import url('https://fonts.googleapis.com/css?family=Source+Serif+Pro&display=swap');
+            table {{
+                font-family: 'Source Serif Pro', serif;
+                border-collapse: collapse;
+                width: 100%;
+            }}
+            td,
+            th {{
+                padding: 5px;
+            }}
+            #tbl-data-add tbody p {{
+                font-size: 12px;
+                font-weight: bold;
+                margin: 3px 0px;
+            }}
+            #tbl-data-add1 {{
+                border-collapse: collapse;
+                border: 1px solid #ddd;
+            }}
+            #tbl-data-add1 tr {{
+                border-bottom: 1px solid #ddd;
+            }}
+            #tbl-data-add1 td {{
+                border: 1px solid #ddd;
+                font-size: 12px;
+                padding: 1px;
+            }}
+            #tbl-data-add1 th {{
+                border: 1px solid #ddd;
+                font-size: 12px;
+                padding: 1px;
+            }}
+            #tbl-data-add1 thead {{
+                background: #eee;
+            }}
+        </style>
+    </head>
+    <body style="width: 373px; height: 576px; padding: 2px;">
+        <table style="height: 100%;">
+            <tr>
+                <td style="vertical-align: middle; text-align: center;">
+                    <p style="font-size: 28px; font-weight: bold;">AMAZON P/U ORDERS</p>
+                    <p style="font-size: 40px; font-weight: bold;">PO#{order_data["ponumber"]}</p>
+                </td>
+            </tr>
+        </table>
+    </body>
+</html>
+                    """
+                    
+                    # Convert packingslip_html to base64
+                    packingslip_base64 = base64.b64encode(packingslip_html.encode('utf-8')).decode('utf-8')
+                    
                     # Create a temporary HTML file for the current label
                     with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.html') as f:
                         f.write(label_html)
@@ -303,7 +374,8 @@ async def generate_all_labels(input_data):
                             "sscc_display": sscc_display,
                             "html_base64": base64.b64encode(label_html.encode('utf-8')).decode('utf-8'),
                             "image_base64": base64.b64encode(screenshot_bytes).decode('utf-8'),
-                            "html_with_image_src": base64.b64encode(f'<html><div><img style="width:373px; height:576px" src="data:image/png;base64,{base64.b64encode(screenshot_bytes).decode("utf-8")}"/></div></html>'.encode('utf-8')).decode('utf-8')
+                            "html_with_image_src": base64.b64encode(f'<html><div><img style="width:373px; height:576px" src="data:image/png;base64,{base64.b64encode(screenshot_bytes).decode("utf-8")}"/></div></html>'.encode('utf-8')).decode('utf-8'),
+                            "packingslip_data": packingslip_base64
                         }
                         
                         labels_by_item[item_name]["labels"].append(label_data)
@@ -375,6 +447,7 @@ def store_labels_in_supabase(labels_data: dict, internal_id: str, order_id: str)
                             "html_base64": label.get("html_base64"),
                             "image_base64": label.get("image_base64"),
                             "html_with_image_src": label.get("html_with_image_src"),
+                            "packingslip_data": label.get("packingslip_data"),
                             "status": "active"
                         }
                         

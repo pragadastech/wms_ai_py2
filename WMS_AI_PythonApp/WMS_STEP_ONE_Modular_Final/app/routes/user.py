@@ -95,15 +95,21 @@ async def get_data_users(current_user: tuple = Depends(get_current_user)):
 @router.get("/data_inventory", response_model=DataResponse)
 async def get_data_inventory(current_user: tuple = Depends(get_current_user)):
     try:
-        all_inventory, progress = await fetch_all_records("netsuite_inventory")
+        all_inventory, progress = await fetch_all_records("sql_netsuite_inventory")
         if all_inventory:
-            # The data is already flattened in the database, just format it for response
+            # Format the inventory data with the correct fields
             inventory_data = {}
             
             for item in all_inventory:
                 internal_id = item["internal_id"]
-                # Get the inventory data which should already be flattened
-                inventory_data[internal_id] = item["inventory_data"]
+                inventory_data[internal_id] = {
+                    "item": item["item"],
+                    "bin_number": item["bin_number"],
+                    "location": item["location"],
+                    "status": item["status"],
+                    "on_hand": item["on_hand"],
+                    "available": item["available"]
+                }
             
             return DataResponse(
                 message="Data retrieved successfully",
