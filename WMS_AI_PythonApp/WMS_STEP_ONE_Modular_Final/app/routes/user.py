@@ -179,6 +179,103 @@ async def get_all_wms_ai_users(current_user: tuple = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching users: {str(e)}")
 
+class UserUpdateRequest(BaseModel):
+    userid: str
+    new_password: str
+
+@router.put("/wms-ai-users/update", response_model=DataResponse)
+async def update_wms_ai_user(
+    update_data: UserUpdateRequest,
+    current_user: tuple = Depends(get_current_user)
+):
+    """
+    Update the password for a user in the wms_ai_users table.
+    Requires user authentication.
+    """
+    try:
+        # First check if the user exists
+        response = supabase.table("wms_ai_users").select("*").eq("userid", update_data.userid).execute()
+        
+        if not response.data:
+            return DataResponse(
+                status=404,
+                message=f"User with userid {update_data.userid} not found",
+                total_records=0,
+                data=None,
+                progress=None
+            )
+            
+        # Hash the new password
+        hashed_password = pwd_ctx.hash(update_data.new_password)
+        
+        # Update the user's password
+        update_response = supabase.table("wms_ai_users").update({
+            "password_hash": hashed_password
+        }).eq("userid", update_data.userid).execute()
+        
+        if not update_response.data:
+            return DataResponse(
+                status=500,
+                message="Failed to update user password",
+                total_records=0,
+                data=None,
+                progress=None
+            )
+            
+        return DataResponse(
+            status=200,
+            message=f"User {update_data.userid} password updated successfully",
+            total_records=1,
+            data={"userid": update_data.userid},
+            progress=None
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating user: {str(e)}")
+
+@router.delete("/wms-ai-users/delete/{userid}", response_model=DataResponse)
+async def delete_wms_ai_user(
+    userid: str,
+    current_user: tuple = Depends(get_current_user)
+):
+    """
+    Delete a user from the wms_ai_users table by userid.
+    Requires user authentication.
+    """
+    try:
+        # First check if the user exists
+        response = supabase.table("wms_ai_users").select("*").eq("userid", userid).execute()
+        
+        if not response.data:
+            return DataResponse(
+                status=404,
+                message=f"User with userid {userid} not found",
+                total_records=0,
+                data=None,
+                progress=None
+            )
+            
+        # Delete the user record
+        delete_response = supabase.table("wms_ai_users").delete().eq("userid", userid).execute()
+        
+        if not delete_response.data:
+            return DataResponse(
+                status=500,
+                message="Failed to delete user",
+                total_records=0,
+                data=None,
+                progress=None
+            )
+            
+        return DataResponse(
+            status=200,
+            message=f"User {userid} deleted successfully",
+            total_records=1,
+            data={"userid": userid},
+            progress=None
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting user: {str(e)}")
+
 @router.get("/master-admin-details", response_model=DataResponse)
 async def get_master_admin_details():
     """

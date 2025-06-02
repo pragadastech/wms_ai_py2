@@ -128,3 +128,44 @@ async def register_admin(admin_data: AdminRegisterRequest = Body(...)):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error registering admin: {str(e)}")
+
+@router.delete("/admin/delete/{username}", response_model=DataResponse)
+async def delete_admin(username: str, current_admin: tuple = Depends(get_current_admin)):
+    """
+    Delete an admin user from the master_admin_details table by username.
+    Requires admin authentication.
+    """
+    try:
+        # First check if the admin exists
+        response = supabase.table("master_admin_details").select("*").eq("username", username).execute()
+        
+        if not response.data:
+            return DataResponse(
+                status=404,
+                message=f"Admin with username {username} not found",
+                total_records=0,
+                data=None,
+                progress=None
+            )
+            
+        # Delete the admin record
+        delete_response = supabase.table("master_admin_details").delete().eq("username", username).execute()
+        
+        if not delete_response.data:
+            return DataResponse(
+                status=500,
+                message="Failed to delete admin user",
+                total_records=0,
+                data=None,
+                progress=None
+            )
+            
+        return DataResponse(
+            status=200,
+            message=f"Admin {username} deleted successfully",
+            total_records=1,
+            data={"username": username},
+            progress=None
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting admin: {str(e)}")
